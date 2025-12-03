@@ -1,0 +1,73 @@
+---
+- name: Deploy FTP Server (vsftpd) on Ubuntu
+  hosts: ubuntu
+  become: yes
+  become_method: sudo
+
+  tasks:
+
+  - name: Install vsftpd
+    apt:
+      name: vsftpd
+      state: present
+      update_cache: yes
+
+  - name: Ensure FTP directory exists
+    file:
+      path: /srv/ftp
+      state: directory
+      mode: '0755'
+
+  - name: Create README.txt for FTP root
+    copy:
+      dest: /srv/ftp/README.txt
+      content: "Welcome to the FTP server. Files in this directory are READ-ONLY."
+      owner: root
+      group: root
+      mode: '0444'
+
+  - name: Backup original vsftpd.conf (once)
+    copy:
+      src: /etc/vsftpd.conf
+      dest: /etc/vsftpd.conf.bak
+      remote_src: yes
+      force: no
+
+  - name: Enable anonymous FTP upload and local user access
+    blockinfile:
+      path: /etc/vsftpd.conf
+      marker: "# {mark} ANSIBLE MANAGED BLOCK"
+      block: |
+        anonymous_enable=YES
+        local_enable=YES
+        write_enable=YES
+        anon_upload_enable=YES
+        anon_mkdir_write_enable=YES
+        anon_other_write_enable=YES
+        anon_root=/srv/ftp
+        local_umask=022
+        xferlog_enable=YES
+        ftpd_banner=Welcome to the Ubuntu FTP service.
+
+  - name: Restart vsftpd after configuration changes
+    service:
+      name: vsftpd
+      state: restarted
+      enabled: yes
+
+  - name: Ensure FTP directory exists
+    file:
+      path: /srv/ftp
+      state: directory
+      owner: root
+      group: root
+      mode: '0755'
+
+  - name: Create README.txt for FTP root
+    copy:
+      content: "Welcome to the FTP server. Downloads only."
+      dest: /srv/ftp/README.txt
+      owner: root
+      group: root
+      mode: '0644'
+
